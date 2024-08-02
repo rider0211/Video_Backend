@@ -12,18 +12,21 @@ from tourplace.models import TourPlace
 
 class PriceAPIView(APIView):
     
-    permission_classes = [IsISP]
+    permission_classes = [IsAuthenticated]
     
     def post(self, request):
         user = request.user
-        tourplace_id = request.data.get('tourplace')
-        data = request.data
-        data["tourplace"] = TourPlace.objects.get(id = tourplace_id).pk
-        serializer = PriceSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
-        return Response({'status': False, 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        if user.usertype == 2:
+            tourplace_id = request.data.get('tourplace')
+            data = request.data
+            data["tourplace"] = TourPlace.objects.get(id = tourplace_id).pk
+            serializer = PriceSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'status': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+            return Response({'status': False, 'data': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'status': False, 'data': {"msg": "You don't have any permission to creat price."}}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
     def get(self, request, pk, format=None):
         price = get_object_or_404(Price, pk=pk)
