@@ -18,7 +18,7 @@ class PriceAPIView(APIView):
         user = request.user
         if user.usertype == 2:
             tourplace_id = request.data.get('tourplace')
-            data = request.data
+            data = request.data.copy()
             data["tourplace"] = TourPlace.objects.get(id = tourplace_id).pk
             serializer = PriceSerializer(data=data)
             if serializer.is_valid():
@@ -41,7 +41,7 @@ class PriceUpdateAPIView(APIView):
         id = request.data["id"]
         price = Price.objects.get(id = id)
         tourplace_id = request.data.get("tourplace")
-        data = request.data
+        data = request.data.copy()
         data["tourplace"] = TourPlace.objects.get(id = tourplace_id).pk
         serializer = PriceSerializer(price, data=data, partial = True)
         if serializer.is_valid():
@@ -74,7 +74,7 @@ class PriceGetAllAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        tourplace_id = request.data.get("tourplace")
+        tourplace_id = request.query_params.get('tourplace')
         Prices = []
         if tourplace_id:
             tourplace = TourPlace.objects.get(id = tourplace_id)
