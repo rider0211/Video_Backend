@@ -87,50 +87,22 @@ class UserLoginAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = UserLoginSerializer(data = request.data)
+        tourplace = request.data.get("tourplace")
+        print(tourplace)
+        login_data = request.data
+        login_data.pop("tourplace", None)
+        serializer = UserLoginSerializer(data = login_data)
         if serializer.is_valid():
-            print(serializer.validated_data['status'])
-            print(serializer.validated_data['usertype'])
-            if serializer.validated_data['status'] == False and serializer.validated_data['usertype'] == 2:
+            validated_data =serializer.validated_data
+            if validated_data['status'] == False and validated_data['usertype'] == 2:
                 return Response({"status": False, "data": {"msg": "Please wait until admin allows you"}}, status=status.HTTP_423_LOCKED)
             else:
+                user = validated_data.pop('user')
+                print(user.tourplace)
+                user.tourplace = tourplace
+                user.save()
                 return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
         return Response({"status": False, "data": {"msg": "Invalid email or password"}}, status=status.HTTP_406_NOT_ACCEPTABLE)
-    
-class UserUpdateAPIView(APIView):
-    permission_classes = [IsAdmin]
-
-    def post(self, request, *args, **kwargs):
-        user_id = request.data['user_id']
-        user = User.objects.get(id = user_id)
-        print(user)
-        if user == None:
-            Response({"status": False, "data": "User isn't existed now."}, status=status.HTTP_404_NOT_FOUND)
-        origin_tour = user.tourplace
-        for tour in origin_tour:
-            place = TourPlace.objects.get(id = tour)
-            place.isp = 0
-            place.save()
-        userdata = request.data
-        serializer = UserRegUpdateSerializer(user, data=userdata, partial = True)
-        if serializer.is_valid():
-            serializer.save()
-            data = serializer.data
-            tourplaces = data['tourplace']
-            del data['tourplace']
-            data['tourplace'] = []
-            for tourplace in tourplaces:
-                tour_data = {
-                    'id': tourplace,
-                    'place_name': TourPlace.objects.get(id = tourplace).place_name
-                }
-                data['tourplace'].append(tour_data)
-                if user.usertype == 2:
-                    place = TourPlace.objects.get(id = tourplace)
-                    place.isp = user.pk
-                    place.save()
-            return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
-        return Response({"status": False, "data": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
 class ISPRangeListAPIView(ListAPIView):
     serializer_class = UserListSerializer
