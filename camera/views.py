@@ -36,20 +36,31 @@ class CameraClientAPIView(APIView):
 class CameraAPIView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
-
+  
     def get(self, request):
         user = request.user
-        if user.usertype == 1:
-            cameras = Camera.objects.all()
-            serializer = CameraUpdateSerializer(cameras, many=True)
-            return Response({'status': True, 'data': serializer.data})
-        elif user is not None:
-            tourplaces = user.tourplace
-            cameras = Camera.objects.filter(tourplace__in=tourplaces)
-            serializer = CameraUpdateSerializer(cameras, many=True)
-            return Response({'status': True, 'data': serializer.data})
+        tourplace_id = request.query_params.get("tourplace")
+        cameras = []
+
+        if tourplace_id:
+            tourplace = TourPlace.objects.get(id = tourplace_id)
+            cameras = Camera.objects.filter(tourplace = tourplace.pk)
         else:
-            return Response({'status': False, 'error': 'You have to login this site.'}, status=status.HTTP_400_BAD_REQUEST)
+            if user.usertype == 1:
+                tourplace = TourPlace.objects.all().first()
+                cameras = Camera.objects.filter(tourplace = tourplace.pk)
+            elif user.usertype == 2:
+                tourplace = TourPlace.objects.filter(isp = user.pk).first()
+                cameras = Camera.objects.filter(tourplace = tourplace.pk)
+            elif user.usertype == 3:
+                tour_id = user.tourplace[0]
+                tourplace = TourPlace.objects.get(id = tour_id)
+                cameras = Camera.objects.filter(tourplace = tourplace.pk)
+            else:
+                return Response({'status': False, 'error': 'You have to login this site.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = CameraUpdateSerializer(cameras, many=True)
+        return Response({'status': True, 'data': serializer.data})
         
     def post(self, request):
         data = request.data
