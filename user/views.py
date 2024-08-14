@@ -88,7 +88,6 @@ class UserLoginAPIView(APIView):
 
     def post(self, request):
         tourplace = request.data.get("tourplace")
-        print(tourplace)
         login_data = request.data
         login_data.pop("tourplace", None)
         serializer = UserLoginSerializer(data = login_data)
