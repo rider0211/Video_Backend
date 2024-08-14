@@ -20,11 +20,10 @@ class CameraClientAPIView(APIView):
     def get(self, request):
         tourplace = request.data.get("tourplace")
         user = request.user
-        cameras = []
         print(tourplace)
         if tourplace is None and user.usertype == 2:
-            tourplaces = user.tourplace
-            cameras = Camera.objects.filter(tourplace = tourplaces[0])
+            tourplace = TourPlace.objects.filter(isp = user.pk).first()
+            cameras = Camera.objects.filter(tourplace = tourplace.pk)
         else:
             cameras = Camera.objects.filter(tourplace=tourplace)
         if len(cameras) != 0:
