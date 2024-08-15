@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import CameraAPIView, CameraUpdateAPIView, CameraDeleteAPIView, CameraCheckAPIView, CameraClientAPIView
+from .views import CameraAPIView, CameraUpdateAPIView, CameraDeleteAPIView, CameraCheckAPIView, CameraClientAPIView, CameraRestartAPIView
 
 urlpatterns = [
     path('add', CameraAPIView.as_view(), name = 'camera_add'),
@@ -8,5 +8,6 @@ urlpatterns = [
     path('id/<int:pk>', CameraUpdateAPIView.as_view(), name = 'get_camera_by_id'),
     path('tour', CameraClientAPIView.as_view(), name = 'get_camera_by_tourplace'),
     path('delete', CameraDeleteAPIView.as_view(), name = 'delete_camera'),
+    path('restart', CameraRestartAPIView.as_view(), name = 'restart_camera'),
     path('check', CameraCheckAPIView.as_view(), name = 'check_camera'),
 ]

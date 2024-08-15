@@ -170,6 +170,38 @@ class CameraDeleteAPIView(APIView):
         except Exception as e:
             return Response({"status": False, "data": {"msg": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
         
+class CameraRestartAPIView(APIView):
+    permission_classes = [IsISP]
+    parser_classes = (MultiPartParser, FormParser)
+    
+    def post(self, request):
+        camera_id = request.data.get('id')
+        if not camera_id:
+            return Response({"status": False, "data": {"msg": "Header ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            camera = Camera.objects.get(id=camera_id, isp=request.user)
+            output_url = camera.output_url
+            stop_stream(output_url)
+            data = {
+                "camera_name": camera.camera_name,
+                "camera_ip": camera.camera_ip,
+                "camera_port": camera.camera_port,
+                "camera_user_name": camera.camera_user_name,
+                "password": camera.password,
+                "output_url": camera.output_url
+            }
+            rtsp_url = "rtsp://" + data["camera_user_name"] + ":" + data["password"] + "@" + data["camera_ip"] + ":" + data["camera_port"] + "/"
+            convert_rtsp_to_hls(rtsp_url, data["output_url"])
+            return Response({"status": True, "data": {"msg": "Successfully Restarted."}}, status=status.HTTP_200_OK)
+        except Camera.DoesNotExist:
+            try:
+                camera_existence = Camera.objects.get(id = camera_id)
+                return Response({"status": False, "data": {"msg": "You don't have permission to delete this camera."}}, status=status.HTTP_403_FORBIDDEN)
+            except Camera.DoesNotExist:
+                return Response({"status": False, "data": {"msg": "Camera not found."}}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": False, "data": {"msg": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+        
 class CameraCheckAPIView(APIView):
     def post(self, request):
         userdata = request.data
