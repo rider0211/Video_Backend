@@ -161,16 +161,18 @@ class ClientRangeListAPIView(ListAPIView):
     serializer_class = UserListSerializer
     permission_classes = [IsAdminOrISP]  # Assuming you want this endpoint to be protected
     def get_queryset(self):
-        """
-        Optionally restricts the returned users to a given range,
-        by filtering against a `start_row_index` and `end_row_index` query parameter in the URL.
-        """
-        queryset = []
+        tourplace_id = self.request.query_params.get('tourplace', None)
+        tourplace = None
+        if tourplace_id:
+            tourplace = TourPlace.objects.get(id = tourplace_id)
+        else:
+            tourplace = TourPlace.objects.all().first()
         a = self.request.user.tourplace if self.request.user.usertype == 2 else []
+        queryset = []
         if self.request.user.usertype == 1:
-            queryset = User.objects.filter(usertype = 3)
+            queryset = User.objects.filter(usertype = 3, tourplace = tourplace.pk)
         elif self.request.user.usertype == 2:
-            all_users = User.objects.filter(usertype=3)
+            all_users = User.objects.filter(usertype = 3, tourplace = tourplace.pk)
             for user in all_users:
                 if is_subset(user.tourplace, a):
                     queryset.append(user)

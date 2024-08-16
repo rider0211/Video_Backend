@@ -184,12 +184,28 @@ class VideoAddAPIView(APIView):
     
     def get(self, request):
         user = request.user
+        tourplace_id = request.query_params.get("tourplace")
+        videos = []
+
         if user.usertype == 1:
-            videos = Video.objects.all()
+            if tourplace_id:
+                tourplace = TourPlace.objects.get(id = tourplace_id)
+                videos = Video.objects.filter(tourplace = tourplace.pk)
+            else:
+                tourplace = TourPlace.objects.all().first()
+                videos = Video.objects.filter(tourplace = tourplace.pk)
             serializer = VideoSerializer(videos, many = True)
             return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
         elif user.usertype == 2:
-            videos = Video.objects.filter(tourplace__in = user.tourplace)
+            if tourplace_id:
+                tourplace = TourPlace.objects.get(id = tourplace_id)
+                if tourplace.isp == user.pk:
+                    videos = Video.objects.filter(tourplace = tourplace.pk)
+                else:
+                   Response({"status": False, "data": "You don't have any permission for this tourplace."}, status=status.HTTP_200_OK) 
+            else:
+                tourplace = TourPlace.objects.filter(isp = user.pk).first()
+                videos = Video.objects.filter(tourplace = tourplace.pk)
             serializer = VideoSerializer(videos, many = True)
             return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
         elif user.usertype == 3:

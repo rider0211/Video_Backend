@@ -9,6 +9,6 @@ urlpatterns = [
     path('footer/add', FooterAPIView.as_view(), name='footer_add_api'),
     path('footer/delete', FooterDeleteAPIView.as_view(), name='delete-footer'),
     path('video/add', VideoAddAPIView.as_view(), name='add-video'),
-    path('getall', VideoAddAPIView.as_view(), name='add-video'),
+    path('getall', VideoAddAPIView.as_view(), name='get-all-video'),
     path('download', download_video, name='download_page'),
 ]
