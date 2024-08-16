@@ -166,13 +166,16 @@ class ClientRangeListAPIView(ListAPIView):
         if tourplace_id:
             tourplace = TourPlace.objects.get(id = tourplace_id)
         else:
-            tourplace = TourPlace.objects.all().first()
+            if user.usertype == 1:
+                tourplace = TourPlace.objects.all().first()
+            else:
+                tourplace = TourPlace.objects.filter(isp = user.pk).first()
         a = self.request.user.tourplace if self.request.user.usertype == 2 else []
         queryset = []
         if self.request.user.usertype == 1:
-            queryset = User.objects.filter(usertype = 3, tourplace = tourplace.pk)
+            queryset = User.objects.filter(usertype = 3, tourplace = [tourplace.pk])
         elif self.request.user.usertype == 2:
-            all_users = User.objects.filter(usertype = 3, tourplace = tourplace.pk)
+            all_users = User.objects.filter(usertype = 3, tourplace = [tourplace.pk])
             for user in all_users:
                 if is_subset(user.tourplace, a):
                     queryset.append(user)
