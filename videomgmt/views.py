@@ -221,7 +221,7 @@ class VideoAddAPIView(APIView):
             return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
         elif user.usertype == 3:
             tourplace = TourPlace.objects.get(id = user.tourplace[0])
-            videos = Video.objects.filter(client = user.pk)
+            videos = Video.objects.filter(client = user.pk, tourplace = tourplace.pk)
             serializer = VideoSerializer(videos, many = True)
             data = serializer.data
             num_cli = len(data)
