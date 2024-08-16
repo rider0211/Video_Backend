@@ -99,7 +99,7 @@ class UserLoginAPIView(APIView):
             else:
                 user = validated_data.pop('user')
                 if user.usertype == 3:
-                    if tourplace == None:
+                    if tourplace == 0:
                         return Response({"status": False, "data": {"msg": "Please input tourplace."}}, status=status.HTTP_403_FORBIDDEN)
                     else:
                         user.tourplace = [tourplace]
