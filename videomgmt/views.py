@@ -105,7 +105,6 @@ class FooterAPIView(APIView):
             else:
                 return Response({"status": True, "data": []}, status=status.HTTP_200_OK)
         else:
-            # print(tourplace_id)
             tourplace = TourPlace.objects.get(id = tourplace_id)
             footers = Footer.objects.filter(tourplace = tourplace.pk)
             if footers.exists():
@@ -221,7 +220,7 @@ class VideoAddAPIView(APIView):
                 data[i]["tourplace"] = tourplace.place_name
             return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
         elif user.usertype == 3:
-            tourplace = TourPlace.objects.filter(id = user.tourplace[0])
+            tourplace = TourPlace.objects.get(id = user.tourplace[0])
             videos = Video.objects.filter(client = user.pk)
             serializer = VideoSerializer(videos, many = True)
             data = serializer.data

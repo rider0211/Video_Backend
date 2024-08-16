@@ -27,10 +27,8 @@ def convert_rtsp_to_hls(rtsp_url, output_dir):
     
     process = subprocess.Popen(command)
     processes[output_dir] = process
-    print(output_dir)
 
 def stop_stream(output_dir):
-    print(output_dir)
     process = processes.get(output_dir)
     if process:
         process.terminate()

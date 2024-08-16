@@ -44,9 +44,7 @@ class TourplaceUpdateAPIView(APIView):
     def post(self, request):
         id = request.data["id"]
         place = TourPlace.objects.get(id = id)
-        print(place.place_name)
         data = request.data
-        print(data)
         serializer = TourplaceSerializer(place, data=data)
         if serializer.is_valid():
             serializer.save()

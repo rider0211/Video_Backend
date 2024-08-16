@@ -21,7 +21,6 @@ class UserRegUpdateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
-        print(user)
         return user
     
     def update(self, instance, validated_data):
@@ -42,8 +41,7 @@ class UserListSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'phone_number', 'usertype', 'status', 'tourplace', 'level', 'is_active']
         read_only_fields = fields
     def get_tourplace(self, obj):
-        tourplace_ids = obj.tourplace  # This assumes `obj.tourplace` is a list of IDs
-        print(tourplace_ids)
+        tourplace_ids = obj.tourplace
         tourplaces = TourPlace.objects.filter(id__in=tourplace_ids)
         return TourplaceSerializer(tourplaces, many=True).data
 
@@ -54,9 +52,6 @@ class UserLoginSerializer(serializers.Serializer):
     def validate(self, data):
         user = authenticate(email=data['email'], password=data['password'])
         if user:
-            # if user.usertype == 3 and user.created_at + datetime.timedelta(hours=4) < timezone.now():
-                # raise serializers.ValidationError("Your account is expired now.")
-        # if user and user.is_active:
             refresh = RefreshToken.for_user(user)
             access = refresh.access_token
             return {

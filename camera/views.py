@@ -20,7 +20,6 @@ class CameraClientAPIView(APIView):
     def get(self, request):
         tourplace = request.data.get("tourplace")
         user = request.user
-        print(tourplace)
         if tourplace is None and user.usertype == 2:
             tourplace = TourPlace.objects.filter(isp = user.pk).first()
             cameras = Camera.objects.filter(tourplace = tourplace.pk)
@@ -125,7 +124,6 @@ class CameraUpdateAPIView(APIView):
                 "password": data.get("password"),
                 "output_url": output_dir
             }
-            print(data)
             serializer = CameraUpdateSerializer(camera, data=data, partial=True)
             if serializer.is_valid():
                 serializer.save(tourplace = tourplace)
@@ -231,8 +229,6 @@ class CameraCheckAPIView(APIView):
             
             # Parse the JSON response
             data = json.loads(response.text)
-            print(data)
-            print(data[0]["code"])
             return Response({"status": True, "data": "Connected"}, status=status.HTTP_200_OK)
         
         except requests.exceptions.HTTPError as http_err:
