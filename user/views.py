@@ -159,10 +159,11 @@ class ISPRangeListAPIView(ListAPIView):
     
 class ClientRangeListAPIView(ListAPIView):
     serializer_class = UserListSerializer
-    permission_classes = [IsAdminOrISP]  # Assuming you want this endpoint to be protected
+    permission_classes = [IsAdminOrISP]
     def get_queryset(self):
         tourplace_id = self.request.query_params.get('tourplace', None)
         tourplace = None
+        user = self.request.user
         if tourplace_id:
             tourplace = TourPlace.objects.get(id = tourplace_id)
         else:
