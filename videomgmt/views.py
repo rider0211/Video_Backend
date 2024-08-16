@@ -13,6 +13,7 @@ import os
 from tourplace.models import TourPlace
 from django.http import Http404, FileResponse
 from datetime import datetime
+from user.models import User
 
 class HeaderAPIView(APIView):
     permission_classes = [IsAdmin]
@@ -186,7 +187,6 @@ class VideoAddAPIView(APIView):
         user = request.user
         tourplace_id = request.query_params.get("tourplace")
         videos = []
-
         if user.usertype == 1:
             if tourplace_id:
                 tourplace = TourPlace.objects.get(id = tourplace_id)
@@ -195,22 +195,41 @@ class VideoAddAPIView(APIView):
                 tourplace = TourPlace.objects.all().first()
                 videos = Video.objects.filter(tourplace = tourplace.pk)
             serializer = VideoSerializer(videos, many = True)
-            return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
+            data = serializer.data
+            num_cli = len(data)
+            for i in range(num_cli):
+                client = User.objects.get(id = data[i]["client"])
+                data[i]["client"] = client.username
+                data[i]["tourplace"] = tourplace.place_name
+            return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
         elif user.usertype == 2:
             if tourplace_id:
                 tourplace = TourPlace.objects.get(id = tourplace_id)
                 if tourplace.isp == user.pk:
                     videos = Video.objects.filter(tourplace = tourplace.pk)
                 else:
-                   Response({"status": False, "data": "You don't have any permission for this tourplace."}, status=status.HTTP_200_OK) 
+                   Response({"status": False, "data": "You don't have any permission for this tourplace."}, status=status.HTTP_200_OK)
             else:
                 tourplace = TourPlace.objects.filter(isp = user.pk).first()
                 videos = Video.objects.filter(tourplace = tourplace.pk)
             serializer = VideoSerializer(videos, many = True)
-            return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
+            data = serializer.data
+            num_cli = len(data)
+            for i in range(num_cli):
+                client = User.objects.get(id = data[i]["client"])
+                data[i]["client"] = client.username
+                data[i]["tourplace"] = tourplace.place_name
+            return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
         elif user.usertype == 3:
+            tourplace = TourPlace.objects.filter(id = user.tourplace[0])
             videos = Video.objects.filter(client = user.pk)
             serializer = VideoSerializer(videos, many = True)
+            data = serializer.data
+            num_cli = len(data)
+            for i in range(num_cli):
+                client = User.objects.get(id = data[i]["client"])
+                data[i]["client"] = client.username
+                data[i]["tourplace"] = tourplace.place_name
             return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
         
 def download_video(request):
