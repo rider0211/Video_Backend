@@ -105,7 +105,8 @@ class UserLoginAPIView(APIView):
                         user.tourplace = [tourplace]
                         user.save()
                     return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
-            return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
+                else:
+                    return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
         return Response({"status": False, "data": {"msg": "Invalid email or password"}}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
 class UserUpdateAPIView(APIView):
