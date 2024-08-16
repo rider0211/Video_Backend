@@ -91,6 +91,7 @@ class UserLoginAPIView(APIView):
         login_data = request.data
         login_data.pop("tourplace", None)
         serializer = UserLoginSerializer(data = login_data)
+        print(serializer.is_valid())
         if serializer.is_valid():
             validated_data =serializer.validated_data
             if validated_data['status'] == False and validated_data['usertype'] == 2:
@@ -104,6 +105,7 @@ class UserLoginAPIView(APIView):
                         user.tourplace = [tourplace]
                         user.save()
                     return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
+            return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
         return Response({"status": False, "data": {"msg": "Invalid email or password"}}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
 class UserUpdateAPIView(APIView):
