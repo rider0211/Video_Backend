@@ -267,19 +267,6 @@ class ValidStatusAPIView(APIView):
         else:
             logs = PaymentLogs.objects.filter(price__in=prices, remain__gt = 0)
 
-        from_date_str = request.query_params.get('from')
-        to_date_str = request.query_params.get('to')
-        try:
-            from_date = datetime.strptime(from_date_str, '%Y-%m-%d') if from_date_str else None
-            to_date = datetime.strptime(to_date_str, '%Y-%m-%d') if to_date_str else None
-        except ValueError:
-            return Response({"status": False, "message": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if from_date:
-            logs = logs.filter(created_at__gte=from_date)
-        if to_date:
-            logs = logs.filter(created_at__lte=to_date)
-
         output_data = []
         for log in logs:
             user_id = log.user
