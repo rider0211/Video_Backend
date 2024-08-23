@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'tourplace',
     'price',
+    'payment'
 ]
 
 SITE_ID = 1

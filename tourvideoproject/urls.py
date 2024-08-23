@@ -22,7 +22,7 @@ urlpatterns = [
     path('api/v1/user/', include('user.urls')),
     path('api/v1/video/', include('videomgmt.urls')),
     path('api/v1/camera/', include('camera.urls')),
-    path('api/v1/payment/', include('payment.urls')),
+    path('api/v1/invoice/', include('payment.urls')),
     path('api/v1/price/', include('price.urls')),
     path('api/v1/tourplace/', include('tourplace.urls')),
 ]

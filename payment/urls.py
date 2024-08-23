@@ -1,8 +1,7 @@
 from django.urls import path
-# from .views import HeaderAPIView, HeaderDeleteAPIView
+from .views import PaymentAPIView
 
 urlpatterns = [
-    # path('header', HeaderAPIView.as_view(), name='header_api'),
-    # path('header/add', HeaderAPIView.as_view(), name='header_add_api'),
-    # path('header/delete', HeaderDeleteAPIView.as_view(), name='delete-header'),
+    path('pay', PaymentAPIView.as_view(), name='process_payment'),
+    path('list', PaymentAPIView.as_view(), name='payment_list'),
 ]
