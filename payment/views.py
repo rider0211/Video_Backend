@@ -279,7 +279,7 @@ class ValidStatusAPIView(APIView):
             logs = logs.filter(created_at__gte=from_date)
         if to_date:
             logs = logs.filter(created_at__lte=to_date)
-
+            
         output_data = []
         for log in logs:
             user_id = log.user
