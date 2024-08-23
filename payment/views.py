@@ -156,7 +156,7 @@ class PaymentAPIView(APIView):
                 return Response({"status": False, "data": response.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": False, "data": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def get(self, request):
         user = request.user
         paylogs = PaymentLogs.objects.filter(status = 'PENDING')
@@ -169,7 +169,6 @@ class PaymentAPIView(APIView):
                 paylog.comment = comment
                 paylog.message = message
         PaymentLogs.objects.bulk_update(paylogs, ['status', 'comment', 'message'])
-
         if user.usertype == 1:
             tourplace = TourPlace.objects.first()
         elif user.usertype == 2:
@@ -188,7 +187,6 @@ class PaymentAPIView(APIView):
         from_date_str = request.query_params.get('from')
         to_date_str = request.query_params.get('to')
         try:
-            # Convert strings to datetime objects for filtering
             from_date = datetime.strptime(from_date_str, '%Y-%m-%d') if from_date_str else None
             to_date = datetime.strptime(to_date_str, '%Y-%m-%d') if to_date_str else None
         except ValueError:
