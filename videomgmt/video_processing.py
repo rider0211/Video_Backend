@@ -28,10 +28,14 @@ def generate_unique_filename(original_filename, username):
     return f"{name}_{hash_hex}.mp4"
 
 def convert_webm_to_mp4(webm_path, mp4_path):
+    if not os.path.exists(webm_path):
+        raise ValueError(f"Input file does not exist: {webm_path}")
     command = [
         'ffmpeg', '-i', webm_path, '-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac', '-b:a', '128k', '-movflags', 'faststart', mp4_path
     ]
     print("starting to convert webm to mp4")
+    print(webm_path)
+    print(mp4_path)
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
         raise ValueError(f"Error converting webm to mp4: {result.stderr.decode('utf-8')}")
@@ -64,7 +68,6 @@ def process_video(video_id, user_id, original_filename, tourplace):
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
     temp_video_path = os.path.join(settings.MEDIA_ROOT, str(video.video_path))
     converted_video_path = os.path.join(settings.MEDIA_ROOT, f'converted_video_{user.username}_{current_time}.mp4')
-
     convert_webm_to_mp4(temp_video_path, converted_video_path)
 
     try:

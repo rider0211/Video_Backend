@@ -30,7 +30,7 @@ def check_payment_status(payment_id):
         if response.is_success():
             payment_status = response.body['payment']['status']
             _status_ = payment_status
-            comment = json.dump(response.body)
+            comment = json.dumps(response.body)
             message = ""
             if payment_status == 'PENDING':
                 message = "The payment was successfully processed and completed."
@@ -67,7 +67,7 @@ def check_payment_status(payment_id):
             return _status_, comment, message
         elif response.is_error():
             _status_ = "error"
-            comment = json.dump(response.errors)
+            comment = json.dumps(response.errors)
             message = "error"
             return _status_, comment, message
     except Exception as e:
@@ -75,20 +75,21 @@ def check_payment_status(payment_id):
 
 class PaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
+    # parser_classes = (MultiPartParser, FormParser)
     
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         user = request.user
-        token = request.data.get("token")
-        price_id = request.data.get("price_id")
+        token = request.data["token"]
+        price_id = request.data["price_id"]
         prices = Price.objects.filter(id = price_id)
         if len(prices) == 0:
             return Response({"status": False, "data": "Please input correct price id."}, status=status.HTTP_400_BAD_REQUEST)
         price = prices[0]
+        print(price.price)
         data = {
             "user": user.pk,
             "price": price_id,
-            "used": 0,
+            "remain": 0,
             "amount": price.price,
             "status": 0,
             "comment": "",
@@ -108,17 +109,17 @@ class PaymentAPIView(APIView):
                     "currency": "USD"
                 }
             })
+            print(response)
             serializer = {}
             if response.is_success():
                 payment_status = response.body['payment']['status']
                 data["status"] = payment_status
-                data["comment"] = json.dump(response.body)
+                data["comment"] = json.dumps(response.body)
                 if payment_status == 'PENDING':
-                    serializer = PaymentLogsSerializer(data = data)
-                    data["message"] = "The payment was successfully processed and completed."
-                elif payment_status == 'COMPLETED':
                     data["message"] = "The payment is not yet finalized and is awaiting further action, such as 3D Secure verification or manual review."
-                    serializer = PaymentLogsSerializer(data = data)
+                elif payment_status == 'COMPLETED':
+                    data["message"] = "The payment was successfully processed and completed."
+                    data["remain"] = price.record_limit
                 elif payment_status == 'APPROVED':
                     data["message"] = "The payment has been approved but has not yet been captured."
                 elif payment_status == 'CANCELED':
@@ -151,7 +152,22 @@ class PaymentAPIView(APIView):
                 if serializer.is_valid():
                     serializer.save()
                     data = serializer.data
-                    return Response({"status": True, "data": serializer.data}, status=status.HTTP_400_BAD_REQUEST)
+                    print(data["amount"])
+                    tourplace = TourPlace.objects.get(id = price.tourplace.pk)
+                    output_data = {
+                        "username": user.username,
+                        "email": user.email,
+                        "phonenumber": user.phone_number,
+                        "tourplace": tourplace.place_name,
+                        "amount": price.price,
+                        "date": data["updated_at"],
+                        "status": data["status"],
+                        "comment": data["message"],
+                        "remain": data["remain"]
+                    }
+                    return Response({"status": True, "data": output_data}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({"status": False, "data": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             elif response.is_error():
                 return Response({"status": False, "data": response.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -172,9 +188,11 @@ class PaymentAPIView(APIView):
         if user.usertype == 1:
             tourplace = TourPlace.objects.first()
         elif user.usertype == 2:
-            tourplace = request.query_params.get("tourplace", user.tourplace[0])
+            tourplace_id = request.query_params.get("tourplace", user.tourplace[0])
+            tourplace = TourPlace.objects.get(id = tourplace_id)
         else:
-            tourplace = user.tourplace[0]
+            tourplace_id = user.tourplace[0]
+            tourplace = TourPlace.objects.get(id = tourplace_id)
 
         prices = Price.objects.filter(tourplace_id=tourplace)
 
@@ -196,5 +214,88 @@ class PaymentAPIView(APIView):
             logs = logs.filter(created_at__gte=from_date)
         if to_date:
             logs = logs.filter(created_at__lte=to_date)
-        data = PaymentLogsSerializer(logs, many = True).data
-        return Response({"status": True, "data": data}, status=status.HTTP_200_OK)
+
+        output_data = []
+        for log in logs:
+            user_id = log.user
+            client = User.objects.get(id = user_id)
+            price_id = log.price
+            price = Price.objects.get(id = price_id)
+            output_element = {
+                "username": client.username,
+                "email": client.email,
+                "phonenumber": client.phone_number,
+                "tourplace": tourplace.place_name,
+                "amount": price.price,
+                "remain": log.remain,
+                "date": log.updated_at,
+                "status": log.status,
+                "comment": log.message
+            }
+            output_data.append(output_element)
+        return Response({"status": True, "data": output_data}, status=status.HTTP_200_OK)
+    
+class ValidStatusAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        paylogs = PaymentLogs.objects.filter(status = 'PENDING')
+        for paylog in paylogs:
+            comment = json.loads(paylog.comment)
+            payment_id = comment.get("payment", {}).get("id")
+            if payment_id:
+                _status_, comment, message = check_payment_status(payment_id)
+                paylog.status = _status_
+                paylog.comment = comment
+                paylog.message = message
+        PaymentLogs.objects.bulk_update(paylogs, ['status', 'comment', 'message'])
+        if user.usertype == 1:
+            tourplace = TourPlace.objects.first()
+        elif user.usertype == 2:
+            tourplace_id = request.query_params.get("tourplace", user.tourplace[0])
+            tourplace = TourPlace.objects.get(id = tourplace_id)
+        else:
+            tourplace_id = user.tourplace[0]
+            tourplace = TourPlace.objects.get(id = tourplace_id)
+
+        prices = Price.objects.filter(tourplace_id=tourplace)
+
+        logs = []
+        if user.usertype == 3:
+            logs = PaymentLogs.objects.filter(user=user.pk, price__in=prices, remain__gt = 0)
+        else:
+            logs = PaymentLogs.objects.filter(price__in=prices, remain__gt = 0)
+
+        from_date_str = request.query_params.get('from')
+        to_date_str = request.query_params.get('to')
+        try:
+            from_date = datetime.strptime(from_date_str, '%Y-%m-%d') if from_date_str else None
+            to_date = datetime.strptime(to_date_str, '%Y-%m-%d') if to_date_str else None
+        except ValueError:
+            return Response({"status": False, "message": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if from_date:
+            logs = logs.filter(created_at__gte=from_date)
+        if to_date:
+            logs = logs.filter(created_at__lte=to_date)
+
+        output_data = []
+        for log in logs:
+            user_id = log.user
+            client = User.objects.get(id = user_id)
+            price_id = log.price
+            price = Price.objects.get(id = price_id)
+            output_element = {
+                "username": client.username,
+                "email": client.email,
+                "phonenumber": client.phone_number,
+                "tourplace": tourplace.place_name,
+                "amount": price.price,
+                "remain": log.remain,
+                "date": log.updated_at,
+                "status": log.status,
+                "comment": log.message
+            }
+            output_data.append(output_element)
+        return Response({"status": True, "data": output_data}, status=status.HTTP_200_OK)

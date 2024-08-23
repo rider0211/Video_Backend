@@ -14,6 +14,8 @@ from tourplace.models import TourPlace
 from django.http import Http404, FileResponse
 from datetime import datetime
 from user.models import User
+from payment.models import PaymentLogs
+from django.db import transaction
 
 class HeaderAPIView(APIView):
     permission_classes = [IsAdmin]
@@ -155,6 +157,7 @@ class VideoAddAPIView(APIView):
 
     def post(self, request):
         tourplace_id = request.data.get('tourplace_id')
+        pricing_id = request.data.get('pricing_id')
         if not tourplace_id:
             return Response({'error': 'Tourplace ID is required'}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -175,10 +178,25 @@ class VideoAddAPIView(APIView):
             with open(temp_video_path, 'wb+') as temp_file:
                 for chunk in uploaded_video.chunks():
                     temp_file.write(chunk)
-            video = serializer.save(client=request.user, tourplace=tourplace, status=False)
-            subprocess.Popen(
-                ['D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\otisenv\\Scripts\\python.exe', 'D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\tourvideoproject\\videomgmt\\video_processing.py', str(video.id), str(request.user.id), original_filename, str(tourplace_id)]
-            )
+            try:
+                with transaction.atomic():
+                    video = serializer.save(client=request.user, tourplace = tourplace, status=False)
+                    payment_log = PaymentLogs.objects.select_for_update().get(
+                        user=request.user.id, price=pricing_id, remain__gt=0
+                    )
+                    payment_log.remain -= 1
+                    payment_log.save()
+                subprocess.Popen(
+                    ['D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\otisenv\\Scripts\\python.exe', 'D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\tourvideoproject\\videomgmt\\video_processing.py', str(video.id), str(request.user.id), original_filename, str(tourplace_id)]
+                )
+            except PaymentLogs.DoesNotExist:
+                video_file_path = video.video_path.path
+                video.delete()
+                if os.path.exists(video_file_path):
+                    os.remove(video_file_path)
+                if os.path.exists(temp_video_path):
+                    os.remove(temp_video_path)
+                return Response({'status': False, "data": "You don't have any remaining case for this subscription."}, status=status.HTTP_400_BAD_REQUEST)
             return Response({"status": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
         return Response({"status": False, "data": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
