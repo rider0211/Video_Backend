@@ -253,10 +253,8 @@ def download_video(request):
     video_url = request.GET.get('video_url')
     if not video_url:
         raise Http404("Video URL not provided")
-
     video_path = os.path.join(settings.MEDIA_ROOT, video_url.replace('http://localhost:8000/media/', '').replace('/', os.sep))
     if not os.path.exists(video_path):
         raise Http404("Video not found")
-
     response = FileResponse(open(video_path, 'rb'), as_attachment=True, filename=os.path.basename(video_path))
     return response
