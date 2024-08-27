@@ -208,7 +208,7 @@ class PaymentAPIView(APIView):
         from_date_str = request.query_params.get('from')
         to_date_str = request.query_params.get('to')
         try:
-            from_date = datetime.strptime(from_date_str, '%Y-%m-%d') if from_date_str else None
+            from_date = datetime.strptime(from_date_str, '%Y-%m-%d') if from_date_str else datetime.today().replace(day=1)
             to_date = datetime.strptime(to_date_str, '%Y-%m-%d') if to_date_str else None
         except ValueError:
             return Response({"status": False, "message": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
