@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from price.serializers import PriceSerializer
 from .models import PaymentLogs
 from tourplace.models import TourPlace
-from datetime import datetime
+from datetime import datetime, timedelta
 # Create your views here.
 
 def check_payment_status(payment_id):
@@ -209,7 +209,7 @@ class PaymentAPIView(APIView):
         to_date_str = request.query_params.get('to')
         try:
             from_date = datetime.strptime(from_date_str, '%Y-%m-%d') if from_date_str else datetime.today().replace(day=1)
-            to_date = datetime.strptime(to_date_str, '%Y-%m-%d') if to_date_str else None
+            to_date = datetime.strptime(to_date_str, '%Y-%m-%d')  + timedelta(days=1) if to_date_str else None
         except ValueError:
             return Response({"status": False, "message": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
         
