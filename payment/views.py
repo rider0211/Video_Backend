@@ -75,7 +75,6 @@ def check_payment_status(payment_id):
 
 class PaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    # parser_classes = (MultiPartParser, FormParser)
     
     def post(self, request, *args, **kwargs):
         user = request.user
@@ -95,6 +94,9 @@ class PaymentAPIView(APIView):
             "comment": "",
             "message": ""
         }
+        logs = PaymentLogs.objects.filter(user=user.pk, price=price.pk, remain__gt = 0)
+        if len(logs) != 0:
+            return Response({"status": False, "data": "You already paid for this premium."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             client = Client(
                 access_token=os.environ.get("SQUARE_ACCESS_TOKEN"),
@@ -155,6 +157,7 @@ class PaymentAPIView(APIView):
                     print(data["amount"])
                     tourplace = TourPlace.objects.get(id = price.tourplace.pk)
                     output_data = {
+                        "price_id": price.pk,
                         "username": user.username,
                         "email": user.email,
                         "phonenumber": user.phone_number,
@@ -222,6 +225,7 @@ class PaymentAPIView(APIView):
             price_id = log.price
             price = Price.objects.get(id = price_id)
             output_element = {
+                "price_id": price.pk,
                 "username": client.username,
                 "email": client.email,
                 "phonenumber": client.phone_number,
@@ -274,6 +278,7 @@ class ValidStatusAPIView(APIView):
             price_id = log.price
             price = Price.objects.get(id = price_id)
             output_element = {
+                "price_id": price.pk,
                 "username": client.username,
                 "email": client.email,
                 "phonenumber": client.phone_number,
