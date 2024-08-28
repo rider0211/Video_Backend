@@ -15,6 +15,9 @@ from tourplace.models import TourPlace
 from django.utils.crypto import get_random_string
 from django.shortcuts import get_object_or_404
 from django.db.models import F, Func
+from price.models import Price
+from payment.models import PaymentLogs
+from payment.serializers import PaymentLogsSerializer
 # Create your views here.
 
 def is_subset(small, big):
@@ -104,6 +107,26 @@ class UserLoginAPIView(APIView):
                     else:
                         user.tourplace = [tourplace]
                         user.save()
+                        tourplace_field = TourPlace.objects.get(id = tourplace)
+                        try:
+                            price = Price.objects.get(tourplace=tourplace_field.pk, level=0)
+                        except Price.DoesNotExist:
+                            return Response({"status": True, 'data': {"msg": "Free Version for this tourplace isn't existed."}}, status=status.HTTP_404_NOT_FOUND)
+                        finally:
+                            invoice_info = PaymentLogs.objects.filter(user = user.id, price = price.id)
+                            if len(invoice_info) == 0:
+                                data = {
+                                    "user": user.pk,
+                                    "price": price.id,
+                                    "remain": price.record_limit,
+                                    "amount": price.price,
+                                    "status": 0,
+                                    "comment": "",
+                                    "message": ""
+                                }
+                                payserializer = PaymentLogsSerializer(data = data)
+                                if payserializer.is_valid():
+                                    payserializer.save()
                     return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
                 else:
                     return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)

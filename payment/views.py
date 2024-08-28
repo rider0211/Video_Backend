@@ -88,7 +88,7 @@ class PaymentAPIView(APIView):
         data = {
             "user": user.pk,
             "price": price_id,
-            "remain": 0,
+            "remain": price.record_limit,
             "amount": price.price,
             "status": 0,
             "comment": "",
