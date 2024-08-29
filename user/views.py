@@ -102,6 +102,7 @@ class UserLoginAPIView(APIView):
             else:
                 user = validated_data.pop('user')
                 if user.usertype == 3:
+                    print(tourplace)
                     if tourplace == 0:
                         return Response({"status": False, "data": {"msg": "Please input tourplace."}}, status=status.HTTP_403_FORBIDDEN)
                     else:
@@ -109,25 +110,28 @@ class UserLoginAPIView(APIView):
                         user.save()
                         tourplace_field = TourPlace.objects.get(id = tourplace)
                         try:
-                            price = Price.objects.get(tourplace=tourplace_field.pk, level=0)
+                            price = Price.objects.get(tourplace=tourplace_field.pk, price=0)
                         except Price.DoesNotExist:
-                            return Response({"status": True, 'data': {"msg": "Free Version for this tourplace isn't existed."}}, status=status.HTTP_404_NOT_FOUND)
-                        finally:
-                            invoice_info = PaymentLogs.objects.filter(user = user.id, price = price.id)
-                            if len(invoice_info) == 0:
-                                data = {
-                                    "user": user.pk,
-                                    "price": price.id,
-                                    "remain": price.record_limit,
-                                    "amount": price.price,
-                                    "status": 0,
-                                    "comment": "",
-                                    "message": ""
-                                }
-                                payserializer = PaymentLogsSerializer(data = data)
-                                if payserializer.is_valid():
-                                    payserializer.save()
-                    return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
+                            return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
+                        invoice_info = PaymentLogs.objects.filter(user = user.id, price = price.id)
+                        if len(invoice_info) == 0:
+                            data = {
+                                "user": user.id,
+                                "price": price.id,
+                                "remain": price.record_limit,
+                                "amount": price.price,
+                                "status": "Completed",
+                                "comment": "Free Version",
+                                "message": "Free Version"
+                            }
+                            payserializer = PaymentLogsSerializer(data = data)
+                            if payserializer.is_valid():
+                                payserializer.save()
+                                return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
+                            else:
+                                return Response({"status": False, "data": {"msg": payserializer.errors}}, status=status.HTTP_403_FORBIDDEN)
+                        else:
+                            return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
                 else:
                     return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
         return Response({"status": False, "data": {"msg": "Invalid email or password"}}, status=status.HTTP_406_NOT_ACCEPTABLE)

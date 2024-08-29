@@ -199,7 +199,7 @@ class PaymentAPIView(APIView):
             tourplace_id = user.tourplace[0]
             tourplace = TourPlace.objects.get(id = tourplace_id)
 
-        prices = Price.objects.filter(tourplace_id=tourplace)
+        prices = Price.objects.filter(tourplace_id=tourplace, price__gt = 0)
 
         logs = []
         if user.usertype == 3:
