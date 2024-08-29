@@ -200,15 +200,13 @@ class ClientRangeListAPIView(ListAPIView):
                 tourplace = TourPlace.objects.all().first()
             else:
                 tourplace = TourPlace.objects.filter(isp = user.pk).first()
-        a = self.request.user.tourplace if self.request.user.usertype == 2 else []
-        queryset = []
-        if self.request.user.usertype == 1:
-            queryset = User.objects.filter(usertype = 3, tourplace = [tourplace.pk])
-        elif self.request.user.usertype == 2:
-            all_users = User.objects.filter(usertype = 3, tourplace = [tourplace.pk])
-            for user in all_users:
-                if is_subset(user.tourplace, a):
-                    queryset.append(user)
+        prices = Price.objects.filter(tourplace = tourplace.pk)
+        user_id_list = set()
+        invoice_list = PaymentLogs.objects.filter(price__in = prices, amount__gt = 0)
+        for invoicelog in invoice_list:
+            user_id_list.add(invoicelog.user)
+        user_id_list = list(user_id_list)
+        queryset = User.objects.filter(id__in = user_id_list)
         start_row_index = self.request.query_params.get('start_row_index', None)
         end_row_index = self.request.query_params.get('end_row_index', None)
 

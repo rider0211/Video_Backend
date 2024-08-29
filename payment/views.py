@@ -190,6 +190,8 @@ class PaymentAPIView(APIView):
         PaymentLogs.objects.bulk_update(paylogs, ['status', 'comment', 'message'])
         if user.usertype == 1:
             tourplace = TourPlace.objects.first()
+            tourplace_id = request.query_params.get("tourplace", tourplace.id)
+            tourplace = TourPlace.objects.get(id = tourplace_id)
         elif user.usertype == 2:
             tourplace_id = request.query_params.get("tourplace", user.tourplace[0])
             tourplace = TourPlace.objects.get(id = tourplace_id)
@@ -256,6 +258,8 @@ class ValidStatusAPIView(APIView):
         PaymentLogs.objects.bulk_update(paylogs, ['status', 'comment', 'message'])
         if user.usertype == 1:
             tourplace = TourPlace.objects.first()
+            tourplace_id = request.query_params.get("tourplace", tourplace.id)
+            tourplace = TourPlace.objects.get(id = tourplace_id)
         elif user.usertype == 2:
             tourplace_id = request.query_params.get("tourplace", user.tourplace[0])
             tourplace = TourPlace.objects.get(id = tourplace_id)

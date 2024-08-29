@@ -179,16 +179,21 @@ class VideoAddAPIView(APIView):
                 for chunk in uploaded_video.chunks():
                     temp_file.write(chunk)
             try:
-                with transaction.atomic():
-                    video = serializer.save(client=request.user, tourplace = tourplace, status=False)
-                    payment_log = PaymentLogs.objects.select_for_update().get(
-                        user=request.user.id, price=pricing_id, remain__gt=0
+                if request.user.usertype == 3:
+                    with transaction.atomic():
+                        video = serializer.save(client=request.user, tourplace=tourplace, status=False)
+                        payment_log = PaymentLogs.objects.select_for_update().get(
+                            user=request.user.id, price=pricing_id, remain__gt=0
+                        )
+                        payment_log.remain -= 1
+                        payment_log.save()
+                        subprocess.Popen(
+                            ['D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\otisenv\\Scripts\\python.exe', 'D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\tourvideoproject\\videomgmt\\video_processing.py', str(video.id), str(request.user.id), original_filename, str(tourplace_id)]
+                        )
+                else:
+                    subprocess.Popen(
+                        ['D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\otisenv\\Scripts\\python.exe', 'D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\tourvideoproject\\videomgmt\\video_processing.py', str(video.id), str(request.user.id), original_filename, str(tourplace_id)]
                     )
-                    payment_log.remain -= 1
-                    payment_log.save()
-                subprocess.Popen(
-                    ['D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\otisenv\\Scripts\\python.exe', 'D:\\Project\\MyProject\\OttisTourist\\1880_video_update_backend\\tourvideoproject\\videomgmt\\video_processing.py', str(video.id), str(request.user.id), original_filename, str(tourplace_id)]
-                )
             except PaymentLogs.DoesNotExist:
                 video_file_path = video.video_path.path
                 video.delete()
