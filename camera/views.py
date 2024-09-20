@@ -236,14 +236,18 @@ class CameraCheckAPIView(APIView):
             return Response({"status": False, "data": str(err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class CameraStreamingAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     
-    def get(self, request, pk, format=None):
+    def get(self, request, pk, userid, format=None):
         camera_id = pk
+        user_id = userid
         if not camera_id:
             return Response({"status": False, "data": {"msg": "Camera ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            camera = Camera.objects.get(id=camera_id, isp=request.user)
+            user = User.objects.filter(id = user_id).first()
+            if not user:
+                Response({"status": False, "data": {"msg": "You don't have any permission to access this camera."}}, status=status.HTTP_403_FORBIDDEN)
+            camera = Camera.objects.get(id=camera_id, isp=user)
             username = camera.camera_user_name
             password = camera.password
             ip_addr = camera.camera_ip
@@ -269,12 +273,15 @@ class CameraStreamingAPIView(APIView):
         except Exception as e:
             return Response({"status": False, "data": {"msg": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
         
-    def post(self, request, pk, format=None):
+    def post(self, request, pk, user_id, format=None):
         camera_id = pk
         if not camera_id:
             return Response({"status": False, "data": {"msg": "Camera ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            camera = Camera.objects.get(id=camera_id, isp=request.user)
+            user = User.objects.filter(id = user_id).first()
+            if not user:
+                Response({"status": False, "data": {"msg": "You don't have any permission to access this camera."}}, status=status.HTTP_403_FORBIDDEN)
+            camera = Camera.objects.get(id=camera_id, isp=user)
             username = camera.camera_user_name
             password = camera.password
             ip_addr = camera.camera_ip

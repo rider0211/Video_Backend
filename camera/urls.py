@@ -9,6 +9,6 @@ urlpatterns = [
     path('tour', CameraClientAPIView.as_view(), name = 'get_camera_by_tourplace'),
     path('delete', CameraDeleteAPIView.as_view(), name = 'delete_camera'),
     path('check', CameraCheckAPIView.as_view(), name = 'check_camera'),
-    path('stream/start/<int:pk>', CameraStreamingAPIView.as_view(), name = 'start_camera_streaming'),
-    path('stream/stop/<int:pk>', CameraStreamingAPIView.as_view(), name = 'stop_camera_streaming'),
+    path('stream/start/<int:pk>/<int:userid>', CameraStreamingAPIView.as_view(), name = 'start_camera_streaming'),
+    path('stream/stop/<int:pk>/<int:userid>', CameraStreamingAPIView.as_view(), name = 'stop_camera_streaming'),
 ]
