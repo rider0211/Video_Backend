@@ -247,7 +247,7 @@ class CameraStreamingAPIView(APIView):
             user = User.objects.filter(id = user_id).first()
             if not user:
                 Response({"status": False, "data": {"msg": "You don't have any permission to access this camera."}}, status=status.HTTP_403_FORBIDDEN)
-            camera = Camera.objects.get(id=camera_id, isp=user)
+            camera = Camera.objects.get(id=camera_id)
             username = camera.camera_user_name
             password = camera.password
             ip_addr = camera.camera_ip
@@ -281,7 +281,7 @@ class CameraStreamingAPIView(APIView):
             user = User.objects.filter(id = user_id).first()
             if not user:
                 Response({"status": False, "data": {"msg": "You don't have any permission to access this camera."}}, status=status.HTTP_403_FORBIDDEN)
-            camera = Camera.objects.get(id=camera_id, isp=user)
+            camera = Camera.objects.get(id=camera_id)
             username = camera.camera_user_name
             password = camera.password
             ip_addr = camera.camera_ip
