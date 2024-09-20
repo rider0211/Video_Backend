@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from tourplace.models import TourPlace
+from user.models import User
 
 # Create your models here.
 class Camera(models.Model):
@@ -20,3 +21,13 @@ class Camera(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['camera_ip', 'camera_port'], name='unique_camera_ip_port')
         ]
+
+class Stream(models.Model):
+    stream_url = models.CharField(max_length=255)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'stream_tbl'
