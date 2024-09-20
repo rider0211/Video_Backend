@@ -10,8 +10,31 @@ from .utils import convert_rtsp_to_hls, get_output_dir, stop_stream
 import requests
 import json
 from user.models import User
+from camera.models import Stream
 from tourplace.models import TourPlace
+from camera.camera import VideoCamera, IPWebCam, LiveWebCam
+from django.http.response import StreamingHttpResponse
 # Create your views here.
+
+def gen(camera, stream_id):
+    while len(Stream.objects.filter(id=stream_id)) != 0:
+        stream_record = Stream.objects.get(id=stream_id)
+        if not stream_record.is_active:
+            break
+        frame = camera.get_frame()
+        yield (b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+    # while True:
+    #     try:
+    #         stream_record = Stream.objects.get(id=stream_id)
+    #         if not stream_record.is_active:
+    #             break
+    #         frame = camera.get_frame()
+    #         yield (b'--frame\r\n'
+    #                 b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+    #     except Stream.DoesNotExist:
+    #         break
+
 
 class CameraClientAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -79,7 +102,7 @@ class CameraAPIView(APIView):
         serializer = CameraSerializer(data = camdata)
         if serializer.is_valid():
             serializer.save(isp = request.user, tourplace = tourplace)
-            convert_rtsp_to_hls(rtsp_url, output_dir)
+            # convert_rtsp_to_hls(rtsp_url, output_dir)
             output = serializer.data
             output['tourplace'] = [{
                 'id': tourplace.pk,
@@ -112,7 +135,7 @@ class CameraUpdateAPIView(APIView):
             if not origin_dir:
                 return Response({'status': False, 'error': 'Origin Dir is not existed now.'}, status=400)
             origin_dir = origin_dir.lstrip('/')
-            stop_stream(origin_dir)
+            # stop_stream(origin_dir)
             data = request.data
             rtsp_url = "rtsp://" + data.get("camera_user_name") + ":" + data.get("password") + "@" + data.get("camera_ip") + ":" + data.get("camera_port") + "/"
             output_dir = get_output_dir(rtsp_url)
@@ -127,7 +150,7 @@ class CameraUpdateAPIView(APIView):
             serializer = CameraUpdateSerializer(camera, data=data, partial=True)
             if serializer.is_valid():
                 serializer.save(tourplace = tourplace)
-                convert_rtsp_to_hls(rtsp_url, output_dir)
+                # convert_rtsp_to_hls(rtsp_url, output_dir)
                 output = serializer.data
                 output['tourplace']
                 return Response({"status": True, "data": serializer.data}, status=status.HTTP_200_OK)
@@ -148,7 +171,7 @@ class CameraDeleteAPIView(APIView):
     def post(self, request):
         camera_id = request.data.get('id')
         if not camera_id:
-            return Response({"status": False, "data": {"msg": "Header ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": False, "data": {"msg": "Camera ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
         try:
             camera = Camera.objects.get(id=camera_id, isp=request.user)
             output_url = camera.output_url
@@ -156,41 +179,9 @@ class CameraDeleteAPIView(APIView):
                 return Response({'status': False, 'error': 'Origin Dir is not existed now.'}, status=400)
             
             output_url = output_url.lstrip('/')
-            stop_stream(output_url)
+            # stop_stream(output_url)
             camera.delete()
             return Response({"status": True, "data": {"msg": "Successfully Deleted."}}, status=status.HTTP_200_OK)
-        except Camera.DoesNotExist:
-            try:
-                camera_existence = Camera.objects.get(id = camera_id)
-                return Response({"status": False, "data": {"msg": "You don't have permission to delete this camera."}}, status=status.HTTP_403_FORBIDDEN)
-            except Camera.DoesNotExist:
-                return Response({"status": False, "data": {"msg": "Camera not found."}}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"status": False, "data": {"msg": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
-        
-class CameraRestartAPIView(APIView):
-    permission_classes = [IsISP]
-    parser_classes = (MultiPartParser, FormParser)
-    
-    def post(self, request):
-        camera_id = request.data.get('id')
-        if not camera_id:
-            return Response({"status": False, "data": {"msg": "Header ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            camera = Camera.objects.get(id=camera_id, isp=request.user)
-            output_url = camera.output_url
-            stop_stream(output_url)
-            data = {
-                "camera_name": camera.camera_name,
-                "camera_ip": camera.camera_ip,
-                "camera_port": camera.camera_port,
-                "camera_user_name": camera.camera_user_name,
-                "password": camera.password,
-                "output_url": camera.output_url
-            }
-            rtsp_url = "rtsp://" + data["camera_user_name"] + ":" + data["password"] + "@" + data["camera_ip"] + ":" + data["camera_port"] + "/"
-            convert_rtsp_to_hls(rtsp_url, data["output_url"])
-            return Response({"status": True, "data": {"msg": "Successfully Restarted."}}, status=status.HTTP_200_OK)
         except Camera.DoesNotExist:
             try:
                 camera_existence = Camera.objects.get(id = camera_id)
@@ -243,3 +234,65 @@ class CameraCheckAPIView(APIView):
             return Response({"status": False, "data": f'JSON decode error: {json_err}', 'content': response.text}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as err:
             return Response({"status": False, "data": str(err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class CameraStreamingAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pk, format=None):
+        camera_id = pk
+        if not camera_id:
+            return Response({"status": False, "data": {"msg": "Camera ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            camera = Camera.objects.get(id=camera_id, isp=request.user)
+            username = camera.camera_user_name
+            password = camera.password
+            ip_addr = camera.camera_ip
+            port = camera.camera_port
+            stream_url = f"rtsp://{username}:{password}@{ip_addr}:{port}/"
+            stream_record, created = Stream.objects.get_or_create(
+                stream_url=stream_url,
+                user=request.user,
+
+                defaults={'is_active': True}
+            )
+            if not created:
+                stream_record.is_active = True
+                stream_record.save()
+
+            return StreamingHttpResponse(gen(LiveWebCam(stream_url)), content_type = 'multipart/x-mixed-replace; boundary=frame')
+        except Camera.DoesNotExist:
+            try:
+                camera_existence = Camera.objects.get(id = camera_id)
+                return Response({"status": False, "data": {"msg": "You don't have permission to delete this camera."}}, status=status.HTTP_403_FORBIDDEN)
+            except Camera.DoesNotExist:
+                return Response({"status": False, "data": {"msg": "Camera not found."}}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": False, "data": {"msg": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+        
+    def post(self, request, pk, format=None):
+        camera_id = pk
+        if not camera_id:
+            return Response({"status": False, "data": {"msg": "Camera ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            camera = Camera.objects.get(id=camera_id, isp=request.user)
+            username = camera.camera_user_name
+            password = camera.password
+            ip_addr = camera.camera_ip
+            port = camera.camera_port
+            stream_url = f"rtsp://{username}:{password}@{ip_addr}:{port}/"
+            stream_record = Stream.objects.filter(stream_url=stream_url, user=request.user).first()
+            if stream_record:
+                stream_record.is_active = False
+                stream_record.save()
+                stream_record.delete()
+                return Response({"status": True, "data": {"msg": "Stream stopped"}}, status=status.HTTP_200_OK)
+            else:
+                return Response({"status": False, "data": {"msg": "Stream not found"}}, status=status.HTTP_404_NOT_FOUND)
+        except Camera.DoesNotExist:
+            try:
+                camera_existence = Camera.objects.get(id = camera_id)
+                return Response({"status": False, "data": {"msg": "You don't have permission to delete this camera."}}, status=status.HTTP_403_FORBIDDEN)
+            except Camera.DoesNotExist:
+                return Response({"status": False, "data": {"msg": "Camera not found."}}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": False, "data": {"msg": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
