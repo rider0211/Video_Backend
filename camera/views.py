@@ -263,7 +263,8 @@ class CameraStreamingAPIView(APIView):
                 stream_record.is_active = True
                 stream_record.save()
 
-            return StreamingHttpResponse(gen(LiveWebCam(stream_url)), content_type = 'multipart/x-mixed-replace; boundary=frame')
+            # return StreamingHttpResponse(gen(LiveWebCam(stream_url)), content_type = 'multipart/x-mixed-replace; boundary=frame')
+            return StreamingHttpResponse(gen(VideoCamera()), content_type = 'multipart/x-mixed-replace; boundary=frame')
         except Camera.DoesNotExist:
             try:
                 camera_existence = Camera.objects.get(id = camera_id)
