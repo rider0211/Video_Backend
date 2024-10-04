@@ -6,7 +6,7 @@ from rest_framework.generics import ListAPIView
 from .serializers import UserRegUpdateSerializer, UserListSerializer, UserLoginSerializer, UserDetailSerializer
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from .models import User, Invitation
+from .models import User, Invitation, EmailOTP
 from .permissions import IsAdmin, IsAdminOrISP
 from .tokens import account_activation_token
 from django.template.loader import render_to_string
@@ -18,6 +18,7 @@ from django.db.models import F, Func
 from price.models import Price
 from payment.models import PaymentLogs
 from payment.serializers import PaymentLogsSerializer
+import random
 # Create your views here.
 
 def is_subset(small, big):
@@ -31,7 +32,7 @@ class UserAPIView(APIView):
         print(serializer.is_valid())
         if serializer.is_valid():
             user = serializer.save()
-            serializer.is_active = False
+            serializer.is_activate = False
             user.save()
             token = account_activation_token.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -102,7 +103,8 @@ class UserLoginAPIView(APIView):
             else:
                 user = validated_data.pop('user')
                 if user.usertype == 3:
-                    print(tourplace)
+                    if user.is_activate == False:
+                        return Response({"status": False, "data": {"msg": "Please activate your account first."}}, status=status.HTTP_406_NOT_ACCEPTABLE)
                     if tourplace == 0:
                         return Response({"status": False, "data": {"msg": "Please input tourplace."}}, status=status.HTTP_403_FORBIDDEN)
                     else:
@@ -233,7 +235,7 @@ class ActivateAccount(APIView):
             user = None
 
         if user is not None and account_activation_token.check_token(user, token):
-            user.is_active = True
+            user.is_activate = True
             user.save()
             mail_subject = 'Activate Successfully'
             message = render_to_string('verification_success_email.html', {
@@ -254,7 +256,7 @@ class ResendActivationEmail(APIView):
         email = request.data.get('email')
         try:
             user = User.objects.get(email=email)
-            if not user.is_active:
+            if not user.is_activate:
                 mail_subject = 'Activate your account.'
                 token = account_activation_token.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -308,7 +310,7 @@ class SetPasswordView(APIView):
                 tourplace_model.save()
             user.is_invited = True
             user.status = True
-            user.is_active = True
+            user.is_activate = True
             user.save()
             invitation.delete()
             subject = 'Invitation to Join'
@@ -328,3 +330,40 @@ class SetPasswordView(APIView):
                 data['tourplace'].append(tourdata)
             return Response({"status": True, "data": data}, status=status.HTTP_201_CREATED)
         return Response({"status": False, "data": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+class PhoneRegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = UserRegUpdateSerializer(data = request.data)
+        print(serializer.is_valid())
+        if serializer.is_valid():
+            user = serializer.save()
+            serializer.is_activate = False
+            user.save()
+            otp = str(random.randint(100000, 999999))
+            EmailOTP.objects.create(user = user, otp = otp)
+            mail_subject = 'Activate your account'
+            message = f"""
+                            <html>
+                            <body>
+                                <p>Your OTP code for <strong>emmysvideos.com</strong> is <strong>{otp}</strong></p>
+                            </body>
+                            </html>
+                        """
+            email = EmailMessage(mail_subject, message, to=[user.email])
+            email.content_subtype = "html"
+            email.send()
+            return Response({"status": True, "data": "User Registered Successfully. OTP sent to your email."}, status = status.HTTP_201_CREATED)
+        return Response({"status": False, "data": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request, otp, format=None):
+        try:
+            email_otp = EmailOTP.objects.get(otp = otp)
+            user = email_otp.user
+            user.is_activate = True
+            user.save()
+            email_otp.delete()
+            return Response({"status": True, "data": "Your account has been successfully activated."}, status = status.HTTP_201_CREATED)
+        except:
+            Response({"status": False, "data": "OTP code isn't invalid."}, status = status.HTTP_404_NOT_FOUND)

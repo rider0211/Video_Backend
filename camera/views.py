@@ -19,7 +19,7 @@ from django.http.response import StreamingHttpResponse
 def gen(camera, stream_id):
     while len(Stream.objects.filter(id=stream_id)) != 0:
         stream_record = Stream.objects.get(id=stream_id)
-        if not stream_record.is_active:
+        if not stream_record.is_activate:
             break
         frame = camera.get_frame()
         yield (b'--frame\r\n'
@@ -27,7 +27,7 @@ def gen(camera, stream_id):
     # while True:
     #     try:
     #         stream_record = Stream.objects.get(id=stream_id)
-    #         if not stream_record.is_active:
+    #         if not stream_record.is_activate:
     #             break
     #         frame = camera.get_frame()
     #         yield (b'--frame\r\n'
@@ -257,10 +257,10 @@ class CameraStreamingAPIView(APIView):
                 stream_url=stream_url,
                 user=request.user,
 
-                defaults={'is_active': True}
+                defaults={'is_activate': True}
             )
             if not created:
-                stream_record.is_active = True
+                stream_record.is_activate = True
                 stream_record.save()
 
             # return StreamingHttpResponse(gen(LiveWebCam(stream_url)), content_type = 'multipart/x-mixed-replace; boundary=frame')
@@ -274,12 +274,12 @@ class CameraStreamingAPIView(APIView):
         except Exception as e:
             return Response({"status": False, "data": {"msg": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
         
-    def post(self, request, pk, user_id, format=None):
+    def post(self, request, pk, userid, format=None):
         camera_id = pk
         if not camera_id:
             return Response({"status": False, "data": {"msg": "Camera ID is required."}}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            user = User.objects.filter(id = user_id).first()
+            user = User.objects.filter(id = userid).first()
             if not user:
                 Response({"status": False, "data": {"msg": "You don't have any permission to access this camera."}}, status=status.HTTP_403_FORBIDDEN)
             camera = Camera.objects.get(id=camera_id)
@@ -290,7 +290,7 @@ class CameraStreamingAPIView(APIView):
             stream_url = f"rtsp://{username}:{password}@{ip_addr}:{port}/"
             stream_record = Stream.objects.filter(stream_url=stream_url, user=request.user).first()
             if stream_record:
-                stream_record.is_active = False
+                stream_record.is_activate = False
                 stream_record.save()
                 stream_record.delete()
                 return Response({"status": True, "data": {"msg": "Stream stopped"}}, status=status.HTTP_200_OK)
