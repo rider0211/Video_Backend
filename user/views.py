@@ -19,7 +19,10 @@ from price.models import Price
 from payment.models import PaymentLogs
 from payment.serializers import PaymentLogsSerializer
 import random
+import logging
 # Create your views here.
+
+logger = logging.getLogger(__name__)
 
 def is_subset(small, big):
     return all(item in big for item in small)
@@ -136,7 +139,7 @@ class UserLoginAPIView(APIView):
                             return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
                 else:
                     return Response({"status": True, "data": serializer.validated_data}, status=status.HTTP_200_OK)
-        return Response({"status": False, "data": {"msg": "Invalid email or password"}}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        return Response({"status": False, "data": {"msg": "Invalid email or password"}}, status=status.HTTP_404_NOT_FOUND)
 
 class UserUpdateAPIView(APIView):
     permission_classes = [IsAdmin]
@@ -365,5 +368,7 @@ class PhoneRegisterView(APIView):
             user.save()
             email_otp.delete()
             return Response({"status": True, "data": "Your account has been successfully activated."}, status = status.HTTP_201_CREATED)
-        except:
-            Response({"status": False, "data": "OTP code isn't invalid."}, status = status.HTTP_404_NOT_FOUND)
+        except EmailOTP.DoesNotExist:
+            return Response({"status": False, "data": "OTP code isn't invalid."}, status = status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": False, "data": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
